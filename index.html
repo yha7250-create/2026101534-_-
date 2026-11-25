@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>형形, 생生</title>
+<style>
+:root{color-scheme:dark;font-family:Inter,Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box} html,body{margin:0} body{background:#090b11;color:#f5f8fc;min-height:100vh}
+#menu{min-height:100vh;padding:clamp(30px,7vh,80px) max(20px,calc((100vw - 1080px)/2));background:radial-gradient(ellipse at 12% 0,#203c4b,transparent 48%),#090b11}
+.eyebrow{font-size:12px;font-weight:bold;letter-spacing:.2em;color:#94dfd5} h1{font-size:clamp(42px,7vw,76px);letter-spacing:-.055em;margin:16px 0}
+.hint{color:#b9c6d3;font-size:18px;line-height:1.6;margin:0 0 32px}
+.choices{align-items:stretch;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px} .choice{display:block;text-align:left;cursor:pointer;background:#17212b;color:white;border:1px solid #3a4a58;border-radius:24px;overflow:hidden;padding:0;transition:.2s;min-width:0}
+.choice:hover,.choice:focus-visible{border-color:#89dbd2;transform:translateY(-3px)} .visual{display:flex;align-items:center;justify-content:center;height:340px;padding:18px;background:#050608;overflow:hidden;min-width:0;min-height:0} .visual img{display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center center}
+.details{padding:22px} .details h2{font-size:25px;margin:0 0 6px} .details p{color:#a6b6c6;margin:0 0 12px} .details span{color:#9ee9de;font-weight:bold}
+.viewer{position:fixed;inset:0;background:#090b11;display:none;flex-direction:column} .viewer.active{display:flex}
+.topbar{padding:10px 20px;display:flex;justify-content:space-between;align-items:center;background:#0a111a;border-bottom:1px solid #27333f;gap:10px;flex-wrap:wrap}
+.leftgroup,.rightgroup{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .topbar button{border:1px solid #5b7380;border-radius:999px;padding:10px 18px;background:#182c36;color:white;cursor:pointer;font-size:14px}
+.topbar button:hover{border-color:#93dfd8} .topbar strong{font-size:14px}
+.stageWrap{display:grid;grid-template-columns:minmax(320px,1fr) 340px;gap:22px;padding:20px;max-width:1400px;width:100%;margin:0 auto;flex:1}
+.stageCard,.panel{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.12);border-radius:24px;box-shadow:0 24px 64px rgba(0,0,0,.35)}
+.stageCard{padding:18px;display:flex;flex-direction:column;gap:14px} .stage{position:relative;border-radius:20px;overflow:hidden;background:#000;display:grid;place-items:center;min-height:60vh} .stage img{max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;object-position:center center;display:block}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#c8d3df} .meta .small{font-size:12px;color:#97a6b6}
+.panel{padding:20px;display:flex;flex-direction:column;gap:18px} .panel h3{margin:0;font-size:24px} .panel p{margin:0;color:#a5b4c4;line-height:1.6}
+.controls{display:flex;flex-direction:column;gap:14px} .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .row button{flex:1;min-width:120px}
+ input[type=range]{appearance:none;-webkit-appearance:none;width:100%;height:52px;background:transparent;cursor:grab;touch-action:pan-y;margin:8px 0 14px;outline-offset:4px}
+input[type=range]:active{cursor:grabbing}
+input[type=range]::-webkit-slider-runnable-track{height:14px;border-radius:999px;background:linear-gradient(to right,#9ee9de 0%,#9ee9de var(--progress,0%),#40535e var(--progress,0%),#40535e 100%)}
+input[type=range]::-moz-range-track{height:14px;border-radius:999px;background:#40535e}
+input[type=range]::-moz-range-progress{height:14px;border-radius:999px;background:#9ee9de}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:36px;height:36px;border-radius:50%;border:5px solid #d8fffa;background:#256e70;box-shadow:0 2px 14px #0009;margin-top:-11px}
+input[type=range]::-moz-range-thumb{width:27px;height:27px;border-radius:50%;border:5px solid #d8fffa;background:#256e70;box-shadow:0 2px 14px #0009} .frameLabel{font-weight:700;color:#9ee9de} .note{font-size:12px;color:#8193a3;line-height:1.6}
+ @media(min-width:961px) and (max-width:1180px){.visual{height:260px}} @media(max-width:960px){.stageWrap{grid-template-columns:1fr} .visual{height:265px} .choices{grid-template-columns:1fr} .hint{font-size:16px} .stage{min-height:48vh}}
+
+.stage{isolation:isolate;} .stage #frameImg{transition:none!important;will-change:contents;}
+.stage .frameOverlay{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center center;opacity:0;pointer-events:none;}
+#loadError{display:none;position:absolute;bottom:8px;left:8px;right:8px;padding:10px;background:#542b30;color:#fff;border-radius:8px;font-size:12px}
+.fxbutton{border:1px solid #5b7380;background:#182c36;color:white;border-radius:12px;padding:10px 12px;cursor:pointer}
+
+/* V54: use the available viewport, never crop a frame */
+.viewer{height:100dvh;overflow:auto}
+.stageWrap{min-height:0;overflow:hidden;grid-template-columns:minmax(0,1fr) 310px;align-items:stretch;padding:12px;gap:14px}
+.stageCard{min-width:0;min-height:0;overflow:hidden;padding:12px;gap:8px}
+.stage{flex:1 1 0;min-width:0;min-height:0!important;height:auto!important;aspect-ratio:auto!important;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.stage img#frameImg{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center;flex:0 1 auto}
+.panel{min-width:0;min-height:0;overflow-y:auto;gap:14px}
+.concept-label{font-size:clamp(22px,3vw,38px);font-weight:800;letter-spacing:.05em;color:#9ee9de}
+@media(max-width:960px){.viewer{height:100dvh}.stageWrap{display:flex;flex-direction:column;overflow:auto;min-height:0;flex:1}.stageCard{flex:1 0 auto;min-height: min(52dvh,480px)}.stage{height:min(48dvh,440px)!important;flex:1 1 auto}.panel{flex:0 0 auto;overflow:visible}.topbar{flex-shrink:0}}
+@media(min-width:961px){.topbar{flex-shrink:0}.stageWrap{height:calc(100dvh - 62px)}.stageCard{height:100%}}
+</style>
+</head>
+<body>
+<div id="menu">
+  <div class="eyebrow">INTERACTIVE FASHION EXHIBITION</div>
+  <h1>형形, 생生</h1>
+  <p class="hint">세 작품 중 하나를 선택하세요.<br>세 가지 패션 룩과 디자인을 살펴보고, 슬라이더로 형태 변화를 감상할 수 있습니다.</p>
+  <section class="choices">
+    <button class="choice" onclick="showSeries('tradition')">
+      <div class="visual"><img src="previews/tradition.webp" alt="과거 시작 프레임"></div>
+      <div class="details"><h2>과거</h2><span>열기 →</span></div>
+    </button>
+    <button class="choice" onclick="showSeries('contemporary')">
+      <div class="visual"><img src="previews/contemporary.webp" alt="현재 시작 프레임"></div>
+      <div class="details"><h2>현재</h2><span>열기 →</span></div>
+    </button>
+    <button class="choice" onclick="showSeries('future')">
+      <div class="visual"><img src="previews/future.webp" alt="미래 시작 프레임"></div>
+      <div class="details"><h2>미래</h2><span>열기 →</span></div>
+    </button>
+  </section>
+  
+</div>
+<div id="viewer" class="viewer" aria-hidden="true">
+  <div class="topbar">
+    <div class="leftgroup"><button onclick="closeViewer()">← 작품 선택으로</button><strong id="seriesTitle">과거</strong></div>
+    <div class="rightgroup"><span class="frameLabel" id="frameLabel">1 / 24</span></div>
+  </div>
+  <div class="stageWrap">
+    <div class="stageCard">
+      <div id="stage" class="stage"><img id="frameImg" alt="현재 프레임"><div id="loadError"></div></div>
+      <div class="meta"><div><div class="small">CURRENT FRAME</div><strong id="frameText">FRAME 01</strong></div><div class="small" id="seriesInfo">24 frames</div></div>
+    </div>
+    <aside class="panel">
+      <div class="concept-label" id="conceptLabel">LOOK DESIGN</div><h3 id="panelTitle">과거</h3>
+      <p id="panelDesc">프레임 순서를 슬라이더로 이동할 수 있습니다.</p>
+      <div class="controls">
+        <input id="slider" type="range" min="1" max="24" step="1" value="1" oninput="onSlider(this.value)">
+        <div class="row"><button onclick="stepFrame(-1)">이전</button><button onclick="stepFrame(1)">다음</button></div>
+      </div>
+      
+    </aside>
+  </div>
+</div>
+<script>
+const embeddedImages = {};
+
+const series = {
+  future: {
+    title: '미래',
+    count: 24,
+    aspect: '2188 / 2806',
+    desc: '바디수트와 케이프를 활용한 미래적 룩입니다. 역삼각형 실루엣과 과감한 볼륨의 대비를 통해 아방가르드한 형태를 표현했습니다.',
+    pattern: 'future_frames/frame_{n}.png'
+  },
+  contemporary: {
+    title: '현재',
+    count: 24,
+    aspect: '1392 / 2048',
+    desc: '애슬레저와 전통 의복의 요소를 결합한 현대적 룩입니다. 트랙 재킷과 스니커즈, 활동적인 실루엣에 한복의 조형적 특징을 더했습니다.',
+    pattern: 'contemporary_frames/frame_{n}.png'
+  },
+  tradition: {
+    title: '과거',
+    count: 24,
+    aspect: '2048 / 1535',
+    desc: '한복의 풍성한 곡선과 넓은 소매, 전통 문양을 중심으로 구성한 룩입니다. 장식적인 직물 표현과 겹쳐지는 치마의 형태로 전통 복식의 아름다움을 강조했습니다.',
+    pattern: 'tradition_frames/frame_{n}.png'
+  }
+};
+let currentKey='tradition',currentIndex=1,loadSerial=0;
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const srcFor=(key,index)=>series[key].pattern.replace('{n}',pad(index)); 
+const cache={tradition:[],contemporary:[],future:[]};
+function preloadSeries(key){
+  for(let i=1;i<=series[key].count;i++){
+    if(cache[key][i])continue;
+    const img=new Image(); img.decoding='async';img.src=srcFor(key,i);
+    cache[key][i]=img;
+    if(img.decode)img.decode().catch(()=>{});
+  }
+}
+function showSeries(key){
+  currentKey=key;currentIndex=1;loadSerial++;
+  $('menu').style.display='none';$('viewer').classList.add('active');$('viewer').setAttribute('aria-hidden','false');
+  const s=series[key];$('seriesTitle').textContent=s.title;$('panelTitle').textContent=s.title;
+  $('panelDesc').textContent=s.desc;$('conceptLabel').textContent='LOOK DESIGN';$('seriesInfo').textContent=s.count+' frames';
+  $('slider').max=s.count;$('slider').value=1;$('stage').style.aspectRatio='auto';
+  preloadSeries(key);render();
+}
+function closeViewer(){loadSerial++;$('viewer').classList.remove('active');$('viewer').setAttribute('aria-hidden','true');$('menu').style.display='block';}
+function render(){
+  const s=series[currentKey],path=srcFor(currentKey,currentIndex),front=$('frameImg');
+  $('frameLabel').textContent=currentIndex+' / '+s.count;
+  $('frameText').textContent='FRAME '+pad(currentIndex);
+  $('slider').value=currentIndex;
+  $('slider').style.setProperty('--progress',((currentIndex-1)/(s.count-1)*100)+'%');
+  $('loadError').style.display='none';
+  // Assign the desired frame immediately. Browser reuses decoded images from the preloader.
+  if(front.getAttribute('src')!==path)front.src=path;
+  front.onerror=()=>{if(front.getAttribute('src')!==path)return;$('loadError').style.display='block';$('loadError').textContent='이미지를 불러오지 못했습니다: '+path;};
+}
+function onSlider(v){currentIndex=Math.max(1,Math.min(series[currentKey].count,Number(v)));render();}
+function stepFrame(d){const next=Math.max(1,Math.min(series[currentKey].count,currentIndex+d));if(next===currentIndex)return;currentIndex=next;render();}
+// Warm the first series after the menu has painted, and the other two when idle.
+window.addEventListener('load',()=>{setTimeout(()=>preloadSeries('tradition'),80);setTimeout(()=>preloadSeries('contemporary'),450);setTimeout(()=>preloadSeries('future'),850);});
+window.addEventListener('keydown',e=>{if(!$('viewer').classList.contains('active'))return;if(e.key==='ArrowLeft')stepFrame(-1);if(e.key==='ArrowRight')stepFrame(1);if(e.key==='Escape')closeViewer();});
+</script>
+</body>
+</html>
